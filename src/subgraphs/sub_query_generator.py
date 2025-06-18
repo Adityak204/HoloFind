@@ -4,6 +4,7 @@ from langchain.chat_models import ChatOpenAI
 from langchain.output_parsers import JsonOutputParser
 from langchain.chains import LLMChain
 from langchain.tools.tavily_search import TavilySearchResults
+from langgraph.runnables import RunnableLambda
 from ..prompts.sub_query_templates import (
     INITIAL_SUBQUERY_PROMPT,
     REFINE_SUBQUERY_PROMPT,
@@ -100,10 +101,10 @@ async def filter_relevant_subqueries(state: SubQueryState) -> SubQueryState:
 def build_subquery_subgraph() -> StateGraph:
     builder = StateGraph(SubQueryState)
 
-    builder.add_node("generate_initial", generate_initial_subqueries)
-    builder.add_node("fetch_snippets", fetch_web_snippets)
-    builder.add_node("refine_subqueries", refine_sub_queries)
-    builder.add_node("filter_subqueries", filter_relevant_subqueries)
+    builder.add_node("generate_initial", RunnableLambda(generate_initial_subqueries))
+    builder.add_node("fetch_snippets", RunnableLambda(fetch_web_snippets))
+    builder.add_node("refine_subqueries", RunnableLambda(refine_sub_queries))
+    builder.add_node("filter_subqueries", RunnableLambda(filter_relevant_subqueries))
 
     builder.set_entry_point("generate_initial")
     builder.add_edge("generate_initial", "fetch_snippets")
