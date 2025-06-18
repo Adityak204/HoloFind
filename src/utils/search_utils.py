@@ -51,6 +51,9 @@ async def search_urls(query: str, num_results: int = 5) -> List[str]:
         return await search_via_duckduckgo(query, num_results)
 
 
+WAYBACK_API = "http://archive.org/wayback/available?url="
+
+
 async def fetch_and_parse_url(url: str) -> Optional[Dict]:
     try:
         async with aiohttp.ClientSession() as session:
@@ -64,8 +67,33 @@ async def fetch_and_parse_url(url: str) -> Optional[Dict]:
                 return {
                     "source_url": url,
                     "raw_html": html,
-                    "text": extracted_text,  # Optional truncation
+                    "text": extracted_text[:5000],  # Optional truncation
                 }
     except Exception as e:
-        print(f"[fetch_and_parse_url] Failed for {url}: {e}")
-        return None
+        print(f"[fetch_and_parse_url] Failed for {url}, trying Wayback Machine: {e}")
+        # Fallback to Wayback Machine
+        try:
+            async with aiohttp.ClientSession() as session:
+                async with session.get(WAYBACK_API + url, timeout=10) as resp:
+                    wayback_data = await resp.json()
+                    archived_url = (
+                        wayback_data.get("archived_snapshots", {})
+                        .get("closest", {})
+                        .get("url")
+                    )
+                    if archived_url:
+                        async with session.get(
+                            archived_url, timeout=15
+                        ) as archived_resp:
+                            html = await archived_resp.text()
+                            extracted_text = extract(html)
+                            if not extracted_text:
+                                raise Exception("Wayback content extraction failed")
+                            return {
+                                "source_url": archived_url,
+                                "raw_html": html,
+                                "text": extracted_text[:5000],
+                            }
+        except Exception as fallback_err:
+            print(f"[Wayback Fallback] Failed for {url}: {fallback_err}")
+            return None
