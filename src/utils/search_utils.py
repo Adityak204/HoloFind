@@ -64,7 +64,7 @@ async def fetch_and_parse_url(url: str) -> Optional[Dict]:
                 return {
                     "source_url": url,
                     "raw_html": html,
-                    "text": extracted_text[:5000],  # Optional truncation
+                    "text": extracted_text,  # Optional truncation
                 }
     except Exception as e:
         print(f"[fetch_and_parse_url] Failed for {url}: {e}")
